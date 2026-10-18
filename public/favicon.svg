@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <!-- Sip. The Wine Simple cover motif: a bunch of flat colour circles on
+       cream paper. Six circles, one per step of the palate scale, s1 at the
+       top-left through s6 at the bottom. Square corners, no stroke, no
+       shadow, no gradient, per DESIGN.md. -->
+  <rect width="1024" height="1024" fill="#faf5ea"/>
+  <g transform="translate(0 -12)">
+    <rect x="500" y="104" width="24" height="150" fill="#191512"/>
+    <circle cx="382" cy="366" r="130" fill="#7b3f9d"/>
+    <circle cx="512" cy="366" r="130" fill="#6e2a46"/>
+    <circle cx="642" cy="366" r="130" fill="#c4506a"/>
+    <circle cx="447" cy="591" r="130" fill="#a8443a"/>
+    <circle cx="577" cy="591" r="130" fill="#d2724a"/>
+    <circle cx="512" cy="816" r="130" fill="#e0a838"/>
+  </g>
+</svg>
