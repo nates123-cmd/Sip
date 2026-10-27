@@ -126,6 +126,7 @@ function Scale() {
 
 export default function Wine() {
   const fileRef = useRef(null)
+  const libraryRef = useRef(null)
   const [mode, setMode] = useState('list')
   const [query, setQuery] = useState('')
   const [stage, setStage] = useState('idle')
@@ -269,11 +270,20 @@ export default function Wine() {
           </button>
         </form>
       ) : (
-        <button className="shoot" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {busy ? STAGES[stage] : SHOOT[mode]}
-        </button>
+        <>
+          <button className="shoot" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {busy ? STAGES[stage] : SHOOT[mode]}
+          </button>
+          {/* The camera button forces the camera on iOS; a photo already in the
+              library (a shot taken at the table, a screenshot of a list) needs
+              an input without `capture`, which offers the library too. */}
+          <button className="tryline" disabled={busy} onClick={() => libraryRef.current?.click()}>
+            or choose a photo
+          </button>
+        </>
       )}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPick} />
+      <input ref={libraryRef} type="file" accept="image/*" onChange={onPick} />
 
       {busy && mode === 'search' && <p className="meta">{STAGES[stage]}</p>}
       {error && <div className="err">{error}</div>}
