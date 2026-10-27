@@ -9,9 +9,15 @@
  * actually drunk, made of your own scores -- not the palate model. The model
  * ranks bottles you have NOT tried; this ranks the ones you have, and the two
  * must not be confused for each other.
+ *
+ * Any row can carry a photo of the bottle. A label photographed to identify the
+ * drink is kept automatically; everything else gets one here, from the camera
+ * or the library. The photo is how he will recognise the bottle in a shop,
+ * which a name typed off a menu often is not.
  */
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Stars } from './Stars'
+import { photoUrl } from '../lib/photos'
 
 const VIEWS = [
   { id: 'totry', label: 'To try' },
@@ -23,8 +29,35 @@ const metaLine = (r) =>
     .filter(Boolean)
     .join(' · ')
 
-export function DrinkList({ rows, loading, onRate, onUnrate, onDelete }) {
+export function DrinkList({ rows, loading, onRate, onUnrate, onDelete, onPhoto, onClearPhoto }) {
   const [view, setView] = useState('totry')
+  const [viewing, setViewing] = useState(null)
+  const [pending, setPending] = useState(() => new Set())
+  const fileRef = useRef(null)
+  const target = useRef(null)
+
+  function pick(row) {
+    target.current = row
+    fileRef.current?.click()
+  }
+
+  async function onPick(e) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    const row = target.current
+    if (!file || !row) return
+    setViewing(null)
+    setPending((p) => new Set(p).add(row.id))
+    try {
+      await onPhoto(row, file)
+    } finally {
+      setPending((p) => { const n = new Set(p); n.delete(row.id); return n })
+    }
+  }
+
+  /* Look the row up again on every render, so the viewer follows a replaced
+   * photo instead of holding the row as it was when it opened. */
+  const open = viewing && rows.find((r) => r.id === viewing)
 
   const totry = rows.filter((r) => r.rating == null)
   /* Best first. `created_at` breaks ties so the order never wobbles between
@@ -68,6 +101,7 @@ export function DrinkList({ rows, loading, onRate, onUnrate, onDelete }) {
       {shown.map((r, i) => (
         <div className="row logged" key={r.id}>
           {view === 'tried' && <div className="rank">{i + 1}</div>}
+          {r.photo_path && <Thumb path={r.photo_path} name={r.name} onOpen={() => setViewing(r.id)} />}
           <div className="name selectable">
             {r.name}
             <div className="meta">{metaLine(r) || '—'}</div>
@@ -76,6 +110,11 @@ export function DrinkList({ rows, loading, onRate, onUnrate, onDelete }) {
               size={13}
               onChange={(n) => onRate(r.id, n)}
             />
+            {!r.photo_path && (
+              <button className="tryline photoline" disabled={pending.has(r.id)} onClick={() => pick(r)}>
+                {pending.has(r.id) ? 'Adding the photo…' : 'Add a photo'}
+              </button>
+            )}
           </div>
           <div className="rowacts">
             {view === 'tried' && (
@@ -90,7 +129,7 @@ export function DrinkList({ rows, loading, onRate, onUnrate, onDelete }) {
             )}
             <button
               className="kill"
-              onClick={() => onDelete(r.id)}
+              onClick={() => onDelete(r.id, r.photo_path)}
               aria-label={`delete ${r.name}`}
             >
               ×
@@ -98,6 +137,69 @@ export function DrinkList({ rows, loading, onRate, onUnrate, onDelete }) {
           </div>
         </div>
       ))}
+
+      <input ref={fileRef} type="file" accept="image/*" onChange={onPick} />
+
+      {open?.photo_path && (
+        <Viewer
+          row={open}
+          busy={pending.has(open.id)}
+          onReplace={() => pick(open)}
+          onRemove={() => { setViewing(null); onClearPhoto(open) }}
+          onClose={() => setViewing(null)}
+        />
+      )}
     </>
+  )
+}
+
+/* Fetched on first show and then kept on the device (lib/photos.js). Until it
+ * arrives the frame holds its place in the paper band colour, so the row does
+ * not jump when it lands. */
+function usePhoto(path) {
+  const [src, setSrc] = useState(null)
+  useEffect(() => {
+    let live = true
+    setSrc(null)
+    photoUrl(path).then((u) => { if (live) setSrc(u) }).catch(() => {})
+    return () => { live = false }
+  }, [path])
+  return src
+}
+
+function Thumb({ path, name, onOpen }) {
+  const src = usePhoto(path)
+  return (
+    <button className="rowphoto" onClick={onOpen} aria-label={`photo of ${name}`}>
+      {src && <img src={src} alt="" />}
+    </button>
+  )
+}
+
+/* The photo at full width on the page ground. No dimmed backdrop and no
+ * shadow: it is the same flat paper the rest of the app sits on. */
+function Viewer({ row, busy, onReplace, onRemove, onClose }) {
+  const src = usePhoto(row.photo_path)
+
+  useEffect(() => {
+    const esc = (e) => { if (e.key === 'Escape') onClose() }
+    window.addEventListener('keydown', esc)
+    return () => window.removeEventListener('keydown', esc)
+  }, [onClose])
+
+  return (
+    <div className="viewer" role="dialog" aria-modal="true" aria-label={`photo of ${row.name}`}>
+      <div className="viewerhead">
+        <div className="name selectable">{row.name}</div>
+        <button className="kill" onClick={onClose} aria-label="close">×</button>
+      </div>
+      <div className="viewerimg">{src && <img src={src} alt={row.name} />}</div>
+      <div className="vieweracts">
+        <button className="tryline" disabled={busy} onClick={onReplace}>
+          {busy ? 'Adding the photo…' : 'Replace photo'}
+        </button>
+        <button className="tryline" disabled={busy} onClick={onRemove}>Remove photo</button>
+      </div>
+    </div>
   )
 }

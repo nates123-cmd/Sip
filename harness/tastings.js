@@ -34,7 +34,7 @@ const store = {
 const fill = (r) => ({
   producer: null, style: null, origin: null, abv: null, notes: null,
   axes: null, axes_confidence: null, lookup_basis: null, source: 'lookup',
-  tasted_on: r.rating == null ? null : '2026-09-02', user_id: 'dev',
+  tasted_on: r.rating == null ? null : '2026-09-02', user_id: 'dev', photo_path: null,
   ...r,
 })
 
@@ -56,7 +56,7 @@ export async function listTastings(category) {
 export const sourceTag = (viaLabel, confirmed) =>
   `${viaLabel ? 'label' : 'lookup'}${confirmed ? '+obdb' : ''}`
 
-export async function addTasting({ category, rating = null, lookup, query, notes, source }) {
+export async function addTasting({ category, rating = null, lookup, query, notes, source, extra }) {
   await wait()
   const row = fill({
     id: id(),
@@ -70,6 +70,7 @@ export async function addTasting({ category, rating = null, lookup, query, notes
     notes: notes || null,
     source: source || 'lookup',
     created_at: new Date().toISOString(),
+    ...extra,
   })
   store[category] = [row, ...store[category]]
   return row
@@ -88,6 +89,13 @@ export async function unrateTasting(rowId) {
   const { hit } = find(rowId)
   hit.rating = null
   hit.tasted_on = null
+  return { ...hit }
+}
+
+export async function setTastingPhoto(rowId, path) {
+  await wait()
+  const { hit } = find(rowId)
+  hit.photo_path = path
   return { ...hit }
 }
 

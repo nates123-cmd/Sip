@@ -203,6 +203,25 @@ This repo is **not linked** to the suite project and that file is **not applied 
 Run it by hand before deploying anything that claims wine is shared, or the app will say so while
 the policy still says otherwise.
 
+## Bottle photos
+
+Any saved drink can carry a photo of the bottle. A label photographed to identify the drink (Wine
+→ Bottle, Beer/Spirits → Label) is kept on save automatically; a wine off a scanned list is not,
+because that photo is of the menu. Every other row gets **Add a photo** (camera or library), and
+tapping a thumbnail opens it full screen with Replace and Remove.
+
+The row stores `photo_path`, never the image. Photos live in the private `sip-photos` bucket at
+`<user_id>/<category>/<uuid>.jpg`, downscaled to 900px (~80 KB). The bucket policy reads the same
+split the rows carry off that path: wine photos are household-visible, beer and spirit photos are
+yours alone. Objects are never rewritten, so each is downloaded once and kept in Cache Storage
+rather than re-fetched through signed URLs that change every time (the suite shares a 5 GB egress
+cap).
+
+    supabase/migrations/20261027_sip_bottle_photos.sql
+
+**Apply it before deploying.** `listTastings` selects `photo_path`, so without the column every
+list fails to load.
+
 ## Setup
 
     cp ../reading-app/.env .env      # VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY

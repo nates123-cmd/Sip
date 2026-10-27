@@ -134,6 +134,7 @@ export default function Wine() {
   const [result, setResult] = useState(null)
   const [bottle, setBottle] = useState(null)
   const [skipped, setSkipped] = useState(null)
+  const [shot, setShot] = useState(null)
   const list = useDrinks('wine')
 
   const busy = stage !== 'idle'
@@ -142,11 +143,14 @@ export default function Wine() {
    * the printed line, which is the only stable identifier a menu entry has. */
   const saved = new Set(list.rows.map((r) => r.name))
 
+  /* A photographed bottle keeps its photo. A wine off a list does not: that
+   * photo is of the menu, and the row would show a page of text. */
   const keep = (entry, axes, source) => (rating) =>
-    list.add({ rating, lookup: wineRow(entry, axes), source }).catch((e) => setError(e.message))
+    list.add({ rating, lookup: wineRow(entry, axes), source, photo: source === 'label' ? shot : null })
+      .catch((e) => setError(e.message))
 
   function clear() {
-    setError(null); setResult(null); setBottle(null); setSkipped(null); setThumb(null)
+    setError(null); setResult(null); setBottle(null); setSkipped(null); setThumb(null); setShot(null)
   }
 
   function pickMode(id) {
@@ -185,6 +189,7 @@ export default function Wine() {
     try {
       if (mode === 'bottle') {
         setStage('label')
+        setShot(file)
         const { bottle: found, thumbnail } = await readBottleLabel(file)
         setThumb(thumbnail)
         await place(found)
@@ -288,6 +293,8 @@ export default function Wine() {
         onRate={list.rate}
         onUnrate={list.unrate}
         onDelete={list.remove}
+        onPhoto={list.setPhoto}
+        onClearPhoto={list.clearPhoto}
       />
 
       <p className="note">
