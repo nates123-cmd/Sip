@@ -34,6 +34,7 @@ const MODES = [
 
 export default function Cellar({ category }) {
   const fileRef = useRef(null)
+  const libraryRef = useRef(null)
   const [mode, setMode] = useState('name')
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
@@ -160,11 +161,20 @@ export default function Cellar({ category }) {
           </button>
         </form>
       ) : (
-        <button className="shoot" disabled={busy} onClick={() => fileRef.current?.click()}>
-          {busy ? stage : c.shoot}
-        </button>
+        <>
+          <button className="shoot" disabled={busy} onClick={() => fileRef.current?.click()}>
+            {busy ? stage : c.shoot}
+          </button>
+          {/* The camera button forces the camera on iOS; a photo already in the
+              library (a shot taken at the table, a screenshot of a list) needs
+              an input without `capture`, which offers the library too. */}
+          <button className="tryline" disabled={busy} onClick={() => libraryRef.current?.click()}>
+            or choose a photo
+          </button>
+        </>
       )}
       <input ref={fileRef} type="file" accept="image/*" capture="environment" onChange={onPick} />
+      <input ref={libraryRef} type="file" accept="image/*" onChange={onPick} />
 
       {busy && mode === 'name' && stage && <p className="meta">{stage}</p>}
       {error && <div className="err">{error}</div>}
