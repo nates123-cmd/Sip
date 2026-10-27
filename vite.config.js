@@ -45,6 +45,7 @@ export default defineConfig(({ mode }) => {
   const swap = {
     [at('./src/lib/supabase.js')]: at('./harness/supabase.js'),
     [at('./src/lib/tastings.js')]: at('./harness/tastings.js'),
+    [at('./src/lib/photos.js')]: at('./harness/photos.js'),
   }
 
   /* resolve.alias matches the IMPORT SPECIFIER, and these modules are imported

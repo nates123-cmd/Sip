@@ -7,11 +7,16 @@
  * server actually stored, because both can be rewritten on the way in: `source`
  * falls back when a CHECK rejects the tag, and rating stamps `tasted_on`.
  * Showing a guess and then correcting it is worse than a beat of latency.
+ *
+ * Photos ride along on the same rows (see lib/photos.js). A photo is never
+ * allowed to cost the drink: if the upload fails the drink is still saved and
+ * the error says so.
  */
 import { useCallback, useEffect, useState } from 'react'
 import {
-  listTastings, addTasting, rateTasting, unrateTasting, deleteTasting,
+  listTastings, addTasting, rateTasting, unrateTasting, deleteTasting, setTastingPhoto,
 } from './tastings'
+import { uploadPhoto, removePhoto } from './photos'
 
 export function useDrinks(category) {
   const [rows, setRows] = useState([])
@@ -28,9 +33,19 @@ export function useDrinks(category) {
     return () => { live = false }
   }, [category])
 
-  const add = useCallback(async (payload) => {
-    const saved = await addTasting({ category, ...payload })
+  /* `photo` is a File, usually the label he just photographed to identify it.
+   * Uploaded first so the row lands in one insert with its path already set. */
+  const add = useCallback(async ({ photo, ...payload }) => {
+    let photo_path = null
+    let photoErr = null
+    if (photo) {
+      try { photo_path = await uploadPhoto(category, photo) } catch (e) { photoErr = e.message }
+    }
+    const saved = await addTasting({
+      category, ...payload, extra: photo_path ? { photo_path } : undefined,
+    }).catch(async (e) => { await removePhoto(photo_path); throw e })
     setRows((r) => [saved, ...r.filter((x) => x.id !== saved.id)])
+    if (photoErr) setError(`Saved, but the photo did not upload: ${photoErr}`)
     return saved
   }, [category])
 
@@ -45,16 +60,46 @@ export function useDrinks(category) {
     try { replace(await unrateTasting(id)) } catch (e) { setError(e.message) }
   }, [])
 
-  const remove = useCallback(async (id) => {
+  /* Add or replace. The old object goes only once the row points at the new
+   * one, so a failure anywhere leaves the row showing a photo that exists. */
+  const setPhoto = useCallback(async (row, file) => {
+    // Read before any write: `row` may be the very object the write updates.
+    const old = row.photo_path
+    try {
+      const path = await uploadPhoto(category, file)
+      try {
+        replace(await setTastingPhoto(row.id, path))
+      } catch (e) {
+        await removePhoto(path)
+        throw e
+      }
+      await removePhoto(old)
+    } catch (e) {
+      setError(e.message)
+    }
+  }, [category])
+
+  const clearPhoto = useCallback(async (row) => {
+    const old = row.photo_path
+    try {
+      replace(await setTastingPhoto(row.id, null))
+      await removePhoto(old)
+    } catch (e) {
+      setError(e.message)
+    }
+  }, [])
+
+  const remove = useCallback(async (id, photoPath) => {
     let prev
     setRows((r) => { prev = r; return r.filter((x) => x.id !== id) })
     try {
       await deleteTasting(id)
+      await removePhoto(photoPath)
     } catch (e) {
       setRows(prev)
       setError(e.message)
     }
   }, [])
 
-  return { rows, loading, error, setError, add, rate, unrate, remove }
+  return { rows, loading, error, setError, add, rate, unrate, remove, setPhoto, clearPhoto }
 }

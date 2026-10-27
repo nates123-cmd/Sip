@@ -16,7 +16,7 @@
 import { supabase } from './supabase'
 
 const COLS =
-  'id, user_id, category, name, producer, style, origin, abv, rating, notes, axes, axes_confidence, lookup_basis, source, tasted_on, created_at'
+  'id, user_id, category, name, producer, style, origin, abv, rating, notes, axes, axes_confidence, lookup_basis, source, tasted_on, photo_path, created_at'
 
 const today = () => new Date().toISOString().slice(0, 10)
 
@@ -139,6 +139,18 @@ export async function unrateTasting(id) {
   const retry = await clear({ rating: null })
   if (!retry.error) return retry.data
   throw new Error(error.message)
+}
+
+/** Point a row at a new photo, or at none. The object itself is lib/photos.js's. */
+export async function setTastingPhoto(id, path) {
+  const { data, error } = await supabase
+    .from('sip_tastings')
+    .update({ photo_path: path })
+    .eq('id', id)
+    .select(COLS)
+    .single()
+  if (error) throw new Error(error.message)
+  return data
 }
 
 export async function deleteTasting(id) {

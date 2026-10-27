@@ -43,11 +43,12 @@ export default function Cellar({ category }) {
   const [producer, setProducer] = useState(null)
   const [checked, setChecked] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [shot, setShot] = useState(null)
   const list = useDrinks(category)
 
   function clear() {
     setError(null); setFound(null); setNotFound(false)
-    setProducer(null); setChecked(false)
+    setProducer(null); setChecked(false); setShot(null)
   }
 
   function pickMode(id) {
@@ -92,6 +93,7 @@ export default function Cellar({ category }) {
     setBusy(true); clear()
     try {
       setStage('Reading the label…')
+      setShot(file)
       const { drink } = await readDrinkLabel(file, category)
       await settle(drink)
     } catch (err) {
@@ -111,6 +113,8 @@ export default function Cellar({ category }) {
         lookup,
         query: query.trim(),
         source: sourceTag(mode === 'label', producer?.sources),
+        // The label he just photographed is the bottle's photo too.
+        photo: mode === 'label' ? shot : null,
       })
       setQuery(''); clear()
     } catch (err) {
@@ -213,6 +217,8 @@ export default function Cellar({ category }) {
         onRate={list.rate}
         onUnrate={list.unrate}
         onDelete={list.remove}
+        onPhoto={list.setPhoto}
+        onClearPhoto={list.clearPhoto}
       />
     </div>
   )
